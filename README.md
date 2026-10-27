@@ -1,3 +1,24 @@
+# PokéRogue Streak Server
+
+포케로그 기반 연승전 API, 계정·세이브, 파티 감사 큐와 버전 등록부를 제공합니다.
+
+클라이언트와 Docker 배포 설정: [pokerogue-streak-client](https://github.com/aksmfosef11/pokerogue-streak-client). 원본: [pagefaultgames/rogueserver](https://github.com/pagefaultgames/rogueserver).
+
+`api/`, `db/`, `defs/`, `cmd/pvp-admin/`, `pvp/`, `go.mod`, `go.sum`, `Dockerfile`이 실행 소스입니다. `pvp/versions.json`은 세 버전의 실제 규칙·감사 워커·엔진 경로를 연결합니다. 규칙 JSON과 manifest는 함께 관리합니다.
+
+빌드는 `devsetup,beta` 태그를 사용합니다. `devsetup`은 로컬 MariaDB 테이블 초기화, `beta`는 로컬 DB 시스템 저장 경로에 필요합니다. 이를 단순히 제거하면 현재 저장 방식이 달라집니다. 배포할 때 런타임 `debug`는 켜지 않습니다.
+
+```sh
+go test -race -tags=devsetup,beta ./...
+docker build --build-arg BUILD_TAGS=devsetup,beta -t pokerogue-streak-server .
+```
+
+환경 변수는 클라이언트 저장소의 `deployment/compose.pvp.yml`과 `.env.example`을 참고합니다. 감사 서버 세 개는 클라이언트의 각 원본 엔진 소스로 빌드하므로 이 서버 저장소만으로 전체 서비스가 완성되지는 않습니다. DB와 HMAC 키 볼륨은 운영 호스트에서 보관합니다.
+
+원본 라이선스와 파일별 저작권 표기를 유지합니다. 아래는 원본 프로젝트 안내입니다.
+
+---
+
 <!--
 SPDX-FileCopyrightText: 2024-2025 Pagefault Games
 

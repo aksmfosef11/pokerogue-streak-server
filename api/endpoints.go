@@ -279,6 +279,33 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, fmt.Errorf("missing clientSessionId"), http.StatusBadRequest)
 		return
 	}
+	// Serialize session saves with the system and combined-save endpoints. A
+	// caller that clears an unused slot can require that it is still empty and
+	// that its existing client session is still current, without taking over a
+	// player's browser session or deleting a concurrently-created run.
+	releaseSave := lockAccountSaves(uuid)
+	defer releaseSave()
+	candidateOnly := r.PathValue("action") == "clear" && r.URL.Query().Get("pvpCandidateOnly") == "1"
+	if candidateOnly {
+		active, checkErr := db.Store.IsActiveSession(uuid, r.URL.Query().Get("clientSessionId"))
+		if checkErr != nil {
+			httpError(w, r, checkErr, http.StatusInternalServerError)
+			return
+		}
+		if !active {
+			httpError(w, r, fmt.Errorf("session out of date: not active"), http.StatusConflict)
+			return
+		}
+		_, checkErr = savedata.GetSession(db.Store, uuid, slot)
+		if checkErr == nil {
+			httpError(w, r, fmt.Errorf("session slot is not empty"), http.StatusConflict)
+			return
+		}
+		if !errors.Is(checkErr, savedata.ErrSaveNotExist) {
+			httpError(w, r, checkErr, http.StatusInternalServerError)
+			return
+		}
+	}
 
 	err = db.Store.UpdateActiveSession(uuid, r.URL.Query().Get("clientSessionId"))
 	if err != nil {
@@ -335,6 +362,20 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 			httpError(w, r, fmt.Errorf("failed to decode request body: %s", err), http.StatusBadRequest)
 			return
 		}
+		if candidateOnly {
+			// The automation supplies an ordinary auditable clear snapshot but
+			// must never delete a save slot or mark synthetic campaign progress.
+			if session.GameMode != 0 || session.WaveIndex != 200 || session.BattleType != 2 {
+				httpError(w, r, fmt.Errorf("classic clear candidate required"), http.StatusBadRequest)
+				return
+			}
+			if err := streakForSystem(session.GameVersion).ObserveClear(uuid, session); err != nil {
+				httpError(w, r, err, http.StatusConflict)
+				return
+			}
+			writeJSON(w, r, savedata.ClearResponse{Success: true})
+			return
+		}
 
 		seed, err := db.Store.GetDailyRunSeed()
 		if err != nil {
@@ -348,6 +389,9 @@ func handleSession(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if err := streakForSystem(session.GameVersion).ObserveClear(uuid, session); err != nil {
+			log.Printf("pvp clear: %v", err)
+		}
 		writeJSON(w, r, resp)
 	case "newclear":
 		resp, err := savedata.NewClear(db.Store, uuid, slot)
@@ -385,6 +429,8 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, err, http.StatusUnauthorized)
 		return
 	}
+	releaseSave := lockAccountSaves(uuid)
+	defer releaseSave()
 
 	var data CombinedSaveData
 	err = json.NewDecoder(r.Body).Decode(&data)
@@ -437,6 +483,10 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if err = validateCampaignUpgrade(uuid, oldSystem, data.System); err != nil {
+		httpError(w, r, err, http.StatusConflict)
+		return
+	}
 	existingSave, err := savedata.GetSession(db.Store, uuid, data.SessionSlotId)
 	if err != nil {
 		if !errors.Is(err, savedata.ErrSaveNotExist) {
@@ -462,6 +512,9 @@ func handleUpdateAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := streakForSystem(data.System.GameVersion).ObserveSystem(uuid, oldSystem, data.System, &data.Session); err != nil {
+		log.Printf("pvp validation: %v", err)
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -476,6 +529,8 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 		httpError(w, r, err, http.StatusUnauthorized)
 		return
 	}
+	releaseSave := lockAccountSaves(uuid)
+	defer releaseSave()
 
 	if !r.URL.Query().Has("clientSessionId") {
 		httpError(w, r, fmt.Errorf("missing clientSessionId"), http.StatusBadRequest)
@@ -559,12 +614,19 @@ func handleSystem(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		if err = validateCampaignUpgrade(uuid, oldSystem, system); err != nil {
+			httpError(w, r, err, http.StatusConflict)
+			return
+		}
 		err = savedata.UpdateSystem(db.Store, uuid, system)
 		if err != nil {
 			httpError(w, r, fmt.Errorf("failed to put system data: %s", err), http.StatusInternalServerError)
 			return
 		}
 
+		if err := streakForSystem(system.GameVersion).ObserveSystem(uuid, oldSystem, system, nil); err != nil {
+			log.Printf("pvp validation: %v", err)
+		}
 		w.WriteHeader(http.StatusNoContent)
 	case "verify":
 		response := SystemVerifyResponse{

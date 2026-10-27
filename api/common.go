@@ -30,6 +30,9 @@ import (
 )
 
 func Init(mux *http.ServeMux) error {
+	if err := initPVP(mux); err != nil {
+		return err
+	}
 	err := scheduleStatRefresh(db.Store)
 	if err != nil {
 		return err

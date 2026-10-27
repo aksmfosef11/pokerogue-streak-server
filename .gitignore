@@ -1,18 +1,22 @@
-
-# no extension on linux, .exe on windows
-rogueserver*
-!/rogueserver/*
-/userdata/*
-secret.key
-
-# local testing
+# Build output and private operator data
+/rogueserver
+/rogueserver.exe
+/pvp-admin
+/pvp-admin.exe
+/userdata/
 /.data/
-
-# Jetbrains IDEs
-/.idea/
-*.iml
-*.ipr
-*.iws
+.env
+.env.*
+!.env.example
+beta.env
+*.key
+*.pem
+*.sql
+*.sqlite
+*.db
+*.log
+*.local
+*.local.*
+.idea/
 .vscode/
-
-/.vs
+.vs/

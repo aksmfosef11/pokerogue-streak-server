@@ -20,6 +20,7 @@ package defs
 const SessionSlotCount = 5
 
 type SystemSaveData struct {
+	PVPEggProofs       []EggProof         `json:"pvpEggProofs,omitempty"`
 	TrainerId          int                `json:"trainerId"`
 	SecretId           int                `json:"secretId"`
 	Gender             int                `json:"gender"`

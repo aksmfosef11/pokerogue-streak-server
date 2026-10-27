@@ -8,3 +8,16 @@ docker-compose*.yml
 
 /rogueserver*
 !/rogueserver.go
+
+.git
+*.log
+*.local
+*.local.*
+.env
+.env.*
+beta.env
+*.key
+*.pem
+*.sql
+*.sqlite
+userdata
