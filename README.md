@@ -1,5 +1,7 @@
 # PokéRogue Streak Server
 
+작업·배포 기본 브랜치는 `streak`입니다. 공식 `master` 브랜치와 원본 커밋 이력을 함께 유지합니다.
+
 포케로그 기반 연승전 API, 계정·세이브, 파티 감사 큐와 버전 등록부를 제공합니다.
 
 클라이언트와 Docker 배포 설정: [pokerogue-streak-client](https://github.com/aksmfosef11/pokerogue-streak-client). 원본: [pagefaultgames/rogueserver](https://github.com/pagefaultgames/rogueserver).
