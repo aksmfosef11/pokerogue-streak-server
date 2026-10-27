@@ -43,6 +43,11 @@ func Init(mux *http.ServeMux) error {
 		return err
 	}
 
+	registerRoutes(mux)
+	return nil
+}
+
+func registerRoutes(mux *http.ServeMux) {
 	// account
 	mux.HandleFunc("GET /account/info", handleAccountInfo)
 	mux.HandleFunc("POST /account/register", handleAccountRegister)
@@ -66,18 +71,8 @@ func Init(mux *http.ServeMux) error {
 	mux.HandleFunc("GET /daily/rankings", handleDailyRankings)
 	mux.HandleFunc("GET /daily/rankingpagecount", handleDailyRankingPageCount)
 
-	// auth
-	mux.HandleFunc("/auth/{provider}/callback", handleProviderCallback)
-	mux.HandleFunc("/auth/{provider}/logout", handleProviderLogout)
-
-	// admin
-	mux.HandleFunc("POST /admin/account/discordLink", handleAdminDiscordLink)
-	mux.HandleFunc("POST /admin/account/discordUnlink", handleAdminDiscordUnlink)
-	mux.HandleFunc("POST /admin/account/googleLink", handleAdminGoogleLink)
-	mux.HandleFunc("POST /admin/account/googleUnlink", handleAdminGoogleUnlink)
+	// Account search remains available to authorized administrators.
 	mux.HandleFunc("GET /admin/account/adminSearch", handleAdminSearch)
-
-	return nil
 }
 
 func tokenFromRequest(r *http.Request) ([]byte, error) {
