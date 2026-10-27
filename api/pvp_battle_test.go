@@ -3,7 +3,7 @@ package api
 import "testing"
 
 func TestBattleOnlySourceRoutes(t *testing.T) {
-	for _, path := range []string{"/pvp/status", "/pvp/matches", "/pvp/commit", "/pvp/finish", "/pvp/register", "/pvp/leaderboard", "/pvp/leaderboard/team", "/pvp/team", "/pvp/end-streak"} {
+	for _, path := range []string{"/pvp/status", "/pvp/matches", "/pvp/commit", "/pvp/finish", "/pvp/register", "/pvp/clear-candidate", "/pvp/leaderboard", "/pvp/leaderboard/team", "/pvp/team", "/pvp/end-streak"} {
 		if !battleSourceRouteAllowed(path) {
 			t.Fatal("battle route rejected", path)
 		}

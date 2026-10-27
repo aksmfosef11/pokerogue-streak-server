@@ -30,7 +30,7 @@ func initPVP(mux *http.ServeMux) error {
 	mux.HandleFunc("GET /pvp/team", handlePVP)
 	mux.HandleFunc("GET /pvp/teams", handlePVP)
 	mux.HandleFunc("GET /pvp/attempt/team", handlePVP)
-	for _, path := range []string{"runs", "anchors", "register", "matches", "commit", "finish", "egg-tickets", "end-streak"} {
+	for _, path := range []string{"runs", "anchors", "clear-candidate", "register", "matches", "commit", "finish", "egg-tickets", "end-streak"} {
 		mux.HandleFunc("POST /pvp/"+path, handlePVP)
 	}
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -45,16 +45,17 @@ func handlePVP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Version  string           `json:"version"`
-		Contract *pvp.RunContract `json:"contract"`
-		Starters []pvp.Starter    `json:"starters"`
-		RunID    string           `json:"runId"`
-		Wave     int              `json:"wave"`
-		Head     string           `json:"head"`
-		Logs     []pvp.Log        `json:"logs"`
-		Practice bool             `json:"practice"`
-		TeamID   string           `json:"teamId"`
-		MatchID  string           `json:"matchId"`
+		Version   string                `json:"version"`
+		Contract  *pvp.RunContract      `json:"contract"`
+		Starters  []pvp.Starter         `json:"starters"`
+		RunID     string                `json:"runId"`
+		Wave      int                   `json:"wave"`
+		Head      string                `json:"head"`
+		Logs      []pvp.Log             `json:"logs"`
+		Candidate *defs.SessionSaveData `json:"candidate"`
+		Practice  bool                  `json:"practice"`
+		TeamID    string                `json:"teamId"`
+		MatchID   string                `json:"matchId"`
 		pvp.Decision
 		Result   string `json:"result"`
 		PlayerHP []int  `json:"playerHP"`
@@ -180,6 +181,12 @@ func handlePVP(w http.ResponseWriter, r *http.Request) {
 		}
 	case "/pvp/anchors":
 		e = service.Anchor(id, req.RunID, req.Wave, req.Head)
+	case "/pvp/clear-candidate":
+		if req.Candidate == nil {
+			e = fmt.Errorf("클리어 후보가 필요합니다")
+		} else {
+			e = service.RecoverClearCandidate(id, req.RunID, *req.Candidate)
+		}
 	case "/pvp/register":
 		e = service.Register(id, req.RunID, req.Logs)
 	case "/pvp/matches":
@@ -199,7 +206,7 @@ func handlePVP(w http.ResponseWriter, r *http.Request) {
 
 func battleSourceRouteAllowed(path string) bool {
 	switch path {
-	case "/pvp/status", "/pvp/matches", "/pvp/commit", "/pvp/finish", "/pvp/end-streak", "/pvp/register", "/pvp/leaderboard", "/pvp/leaderboard/team", "/pvp/team", "/pvp/teams", "/pvp/attempt/team":
+	case "/pvp/status", "/pvp/matches", "/pvp/commit", "/pvp/finish", "/pvp/end-streak", "/pvp/register", "/pvp/clear-candidate", "/pvp/leaderboard", "/pvp/leaderboard/team", "/pvp/team", "/pvp/teams", "/pvp/attempt/team":
 		return true
 	default:
 		return false

@@ -283,6 +283,37 @@ func (s *Service) ObserveClear(id []byte, session defs.SessionSaveData) error {
 		return nil
 	})
 }
+
+// RecoverClearCandidate records a locally retained clear without mutating a
+// campaign save slot. It does not approve a party: Register still requires
+// the full anchored journal and the ordinary auditor must approve it.
+func (s *Service) RecoverClearCandidate(id []byte, runID string, session defs.SessionSaveData) error {
+	return s.update(id, func(st *State) error {
+		return recoverClearCandidate(st, runID, s.GameVersion(), session, time.Now().Unix())
+	})
+}
+
+func recoverClearCandidate(st *State, runID, version string, session defs.SessionSaveData, now int64) error {
+	r := st.Runs[runID]
+	if r == nil || r.ID != runID || r.Seed != session.Seed || r.Version != version || session.GameVersion != version {
+		return fmt.Errorf("런 또는 클리어 버전이 일치하지 않습니다")
+	}
+	if session.GameMode != 0 || session.WaveIndex != 200 || session.BattleType != 2 {
+		return fmt.Errorf("클래식 200층 클리어 후보가 필요합니다")
+	}
+	if r.TrustEpoch != st.TrustEpoch {
+		return fmt.Errorf("기준선 재설정 후 시작한 클래식 런이 필요합니다")
+	}
+	if len(r.Anchors) == 0 || r.Anchors[len(r.Anchors)-1].Wave != 200 {
+		return fmt.Errorf("200층 서버 앵커가 필요합니다")
+	}
+	if r.Candidate == nil {
+		copy := session
+		r.Candidate = &copy
+		r.ClearedAt = now
+	}
+	return nil
+}
 func (s *Service) Register(id []byte, runID string, logs []Log) error {
 	if len(logs) != 200 {
 		return fmt.Errorf("1~200웨이브의 로컬 기록이 필요합니다")
